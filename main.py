@@ -50,8 +50,8 @@ def crear_evento_calendario(titulo, fecha_hora_inicio, fecha_hora_fin):
         service = get_calendar_service()
         event = {
             'summary': titulo,
-            'start': {'dateTime': fecha_hora_inicio, 'timeZone': 'America/Madrid'}, 
-            'end': {'dateTime': fecha_hora_fin, 'timeZone': 'America/Madrid'},
+            'start': {'dateTime': fecha_hora_inicio, 'timeZone': 'America/Mexico_City'}, 
+            'end': {'dateTime': fecha_hora_fin, 'timeZone': 'America/Mexico_City'},
         }
         event = service.events().insert(calendarId='primary', body=event).execute()
         return f"Evento creado: {event.get('htmlLink')}"
