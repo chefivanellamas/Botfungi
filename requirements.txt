@@ -1,4 +1,4 @@
-python-telegram-bot
+python-telegram-bot[webhooks]
 google-generativeai
 google-api-python-client
 google-auth
