@@ -56,7 +56,7 @@ def crear_evento_calendario(titulo, fecha_hora_inicio, fecha_hora_fin):
 
 # Configurar el modelo (CAMBIO A gemini-pro)
 model = genai.GenerativeModel(
-    model_name='gemini-pro',
+    model_name='gemini-1.5-flash-latest',
     tools=[cal_tool],
     system_instruction="Eres un asistente personal experto y organizado. Ayudas al usuario a ordenar sus ideas y gestionar su calendario. Hablas en español de forma amable y concisa."
 )
