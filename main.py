@@ -71,7 +71,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         
         response = client.chat.completions.create(
-            model="llama3-8b-8192", # Modelo gratuito y rapidísimo
+            model="llama-3.3-70b-versatile", # Modelo gratuito y rapidísimo
             messages=messages,
             tools=tools,
             tool_choice="auto"
