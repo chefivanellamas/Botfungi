@@ -54,9 +54,9 @@ def crear_evento_calendario(titulo, fecha_hora_inicio, fecha_hora_fin):
     except Exception as e:
         return f"Error al crear evento: {e}"
 
-# Configurar el modelo
+# Configurar el modelo (CAMBIO AQUÍ: gemini-1.5-flash-001)
 model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash',
+    model_name='gemini-1.5-flash-001',
     tools=[cal_tool],
     system_instruction="Eres un asistente personal experto y organizado. Ayudas al usuario a ordenar sus ideas y gestionar su calendario. Hablas en español de forma amable y concisa."
 )
@@ -80,7 +80,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder))
     
-    # Configurar Webhook para Render (Esto ahora lo hace automáticamente al arrancar)
+    # Configurar Webhook para Render
     app.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get('PORT', 5000)),
