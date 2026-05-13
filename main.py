@@ -54,13 +54,12 @@ def crear_evento_calendario(titulo, fecha_hora_inicio, fecha_hora_fin):
     except Exception as e:
         return f"Error al crear evento: {e}"
 
-# Configurar el modelo (CAMBIO AQUÍ: gemini-1.5-flash-001)
+# Configurar el modelo (CAMBIO A gemini-pro)
 model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash-001',
+    model_name='gemini-pro',
     tools=[cal_tool],
     system_instruction="Eres un asistente personal experto y organizado. Ayudas al usuario a ordenar sus ideas y gestionar su calendario. Hablas en español de forma amable y concisa."
 )
-chat = model.start_chat(enable_automatic_function_calling=True)
 
 # --- LÓGICA DE TELEGRAM ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -69,6 +68,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje_usuario = update.message.text
     try:
+        # Iniciamos un chat nuevo por cada mensaje para evitar errores de estado
+        chat = model.start_chat(enable_automatic_function_calling=True)
         respuesta = chat.send_message(mensaje_usuario)
         await update.message.reply_text(respuesta.text)
     except Exception as e:
