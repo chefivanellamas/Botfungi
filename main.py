@@ -14,7 +14,7 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GOOGLE_CREDS = os.environ.get("GOOGLE_CREDS")
 
-# Configurar Groq (Para texto y transcripción de audio)
+# Configurar Groq
 client = OpenAI(
     api_key=GROQ_API_KEY,
     base_url="https://api.groq.com/openai/v1"
@@ -34,7 +34,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "crear_evento_calendario",
-            "description": "Crea un evento en el calendario del usuario.",
+            "description": "Crea un evento en el calendario del usuario cuando él lo pide explícitamente.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -53,7 +53,7 @@ def crear_evento_calendario(titulo, fecha_hora_inicio, fecha_hora_fin):
         service = get_calendar_service()
         event = {
             'summary': titulo,
-            'start': {'dateTime': fecha_hora_inicio, 'timeZone': 'Europe/Madrid'}, # Ajusta tu zona
+            'start': {'dateTime': fecha_hora_inicio, 'timeZone': 'Europe/Madrid'}, # Ajusta zona
             'end': {'dateTime': fecha_hora_fin, 'timeZone': 'Europe/Madrid'},
         }
         event = service.events().insert(calendarId='primary', body=event).execute()
@@ -63,10 +63,9 @@ def crear_evento_calendario(titulo, fecha_hora_inicio, fecha_hora_fin):
 
 # --- FUNCIONES DE VOZ ---
 async def transcribir_audio(file_path):
-    """Usa Groq Whisper para transcribir el audio del usuario"""
     with open(file_path, "rb") as audio_file:
         transcription = client.audio.transcriptions.create(
-            model="whisper-large-v3", # El modelo de transcripción de Groq (Gratis)
+            model="whisper-large-v3",
             file=audio_file,
             response_format="text",
             language="es"
@@ -74,7 +73,6 @@ async def transcribir_audio(file_path):
     return transcription
 
 def texto_a_voz(texto):
-    """Convierte la respuesta de la IA en un archivo de audio"""
     tts = gTTS(text=texto, lang='es', slow=False)
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio:
         tts.save(temp_audio.name)
@@ -82,20 +80,26 @@ def texto_a_voz(texto):
 
 # --- LÓGICA DE TELEGRAM ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("¡Hola! Soy tu asistente personal con voz. Háblame por texto o por audio, y gestionaré tu calendario.")
+    await update.message.reply_text("¡Hola! Soy tu asistente personal. Háblame por texto o voz, y gestionaré tu calendario.")
 
 async def responder_texto(texto_usuario, es_audio=False):
-    """Procesa el texto con la IA y devuelve la respuesta y si usó herramientas"""
     fecha_actual = datetime.now().strftime("%A, %d de %B de %Y, %H:%M")
     
-    system_prompt = f"""Eres un asistente personal inteligente, conversacional y eficiente. 
-La fecha y hora actual es: {fecha_actual}.
-REGLAS IMPORTANTES:
-1. NUNCA crees un evento sin antes decirle al usuario los detalles y pedirle confirmación.
-2. Si el usuario solo menciona un evento pero no te pide que lo guardes, NO lo guardes.
-3. Solo usa la función de calendario cuando el usuario te pida explícitamente que lo guardes o registres.
-4. Calcula muy bien las fechas basándote en la fecha actual.
-5. Sé conciso y amable. Si te hablan por audio, da respuestas un poco más breves para que el audio de respuesta no sea larguísimo."""
+    # EL NUEVO CEREBRO AUTORITARIO
+    system_prompt = f"""Eres Fungi, un asistente personal virtual integrado en Telegram. 
+Fecha y hora actual: {fecha_actual}.
+
+IDENTIDAD Y CAPACIDADES (REGLAS ABSOLUTAS):
+1. NUNCA digas que eres un modelo de lenguaje de IA, un asistente virtual genérico o que careces de capacidades. Eres Fungi.
+2. SÍ PUEDES ESCUCHAR Y PROCESAR NOTAS DE VOZ. Si el usuario te pregunta si puedes escuchar audios, la respuesta es SIEMPRE SÍ. Tienes un módulo de transcripción avanzado.
+3. SÍ PUEDES CREAR EVENTOS EN EL CALENDARIO cuando el usuario te lo pida explícitamente.
+4. NUNCA inventes funciones que no tienes (no puedes navegar por internet, no puedes enviar emails).
+
+COMPORTAMIENTO:
+- Sé directo, inteligente y conciso. No des explicaciones pedantes sobre cómo funcionas por dentro.
+- Si el usuario pregunta sobre cómo mejorar tu código o capacidades, responde de forma creativa y sugerente, no te desvíes del tema hablando de calendarios si no te lo piden.
+- Si te hablan por audio, responde de forma más breve.
+- Para crear eventos, primero confirma los detalles con el usuario antes de usar la herramienta."""
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -111,26 +115,21 @@ REGLAS IMPORTANTES:
     
     response_message = response.choices[0].message
     
-    # Si la IA decide usar una herramienta
     if response_message.tool_calls:
         for tool_call in response_message.tool_calls:
             if tool_call.function.name == "crear_evento_calendario":
                 args = json.loads(tool_call.function.arguments)
                 resultado = crear_evento_calendario(args["titulo"], args["fecha_hora_inicio"], args["fecha_hora_fin"])
-                return resultado, True # True indica que ya se ejecutó una herramienta
+                return resultado, True
     
-    # Si la IA solo responde texto
     return response_message.content, False
 
 async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja los mensajes de texto normales"""
     texto_usuario = update.message.text
     respuesta, uso_herramienta = await responder_texto(texto_usuario, es_audio=False)
     await update.message.reply_text(respuesta)
 
 async def procesar_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja las notas de voz: Transcribe, piensa y responde con voz"""
-    # 1. Descargar el audio
     voice = update.message.voice or update.message.audio
     voice_file = await context.bot.get_file(voice.file_id)
     
@@ -138,10 +137,9 @@ async def procesar_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await voice_file.download_to_drive(temp_audio.name)
         audio_path = temp_audio.name
 
-    # 2. Transcribir con Groq Whisper
     try:
         texto_usuario = await transcribir_audio(audio_path)
-        os.remove(audio_path) # Borrar archivo temporal
+        os.remove(audio_path)
     except Exception as e:
         os.remove(audio_path)
         await update.message.reply_text(f"Error al transcribir tu audio: {e}")
@@ -149,28 +147,22 @@ async def procesar_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(f"🎧 Escuché: _{texto_usuario}_", parse_mode="Markdown")
 
-    # 3. Procesar con la IA
     respuesta, uso_herramienta = await responder_texto(texto_usuario, es_audio=True)
 
-    # 4. Si usó herramienta, respondemos en texto (no tiene sentido un audio leyendo un enlace de Google Calendar)
     if uso_herramienta:
         await update.message.reply_text(respuesta)
     else:
-        # 5. Convertir respuesta a voz y enviarla
         try:
             audio_respuesta_path = texto_a_voz(respuesta)
             with open(audio_respuesta_path, 'rb') as audio_file:
                 await update.message.reply_voice(voice=audio_file)
-            os.remove(audio_respuesta_path) # Borrar archivo temporal
+            os.remove(audio_respuesta_path)
         except Exception as e:
-            # Si falla el audio, que mande el texto por lo menos
             await update.message.reply_text(respuesta)
 
 # --- INICIO DEL BOT ---
 def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
-    
-    # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_mensaje))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, procesar_audio))
