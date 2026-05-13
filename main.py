@@ -75,15 +75,12 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Ocurrió un error procesando tu mensaje: {e}")
 
 # --- INICIO DEL BOT ---
-async def post_init(application):
-    await application.bot.set_webhook(url=f"{os.environ.get('RENDER_EXTERNAL_URL')}/{TELEGRAM_TOKEN}")
-
 def main():
-    app = Application.builder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder))
     
-    # Configurar Webhook para Render
+    # Configurar Webhook para Render (Esto ahora lo hace automáticamente al arrancar)
     app.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get('PORT', 5000)),
